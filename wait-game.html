@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>等一等小遊戲</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+body{font-family:"PingFang HK","Noto Sans CJK HK","Microsoft JhengHei",sans-serif;background:#fff4dc;color:#2b2b2b}
+#app{position:relative;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.screen{display:none;width:100%;height:100%;flex-direction:column;align-items:center;justify-content:center;padding:2vmin}
+.screen.on{display:flex}
+h1{font-size:clamp(40px,9vmin,96px);margin:0 0 1vmin;letter-spacing:.08em}
+.sub{font-size:clamp(24px,5vmin,52px);margin:0 0 3vmin;color:#555}
+.bigbtn{font:inherit;font-weight:700;font-size:clamp(34px,8vmin,80px);padding:2vmin 7vmin;border:none;border-radius:6vmin;background:#2fb344;color:#fff;box-shadow:0 1.2vmin 0 #1f8a31;cursor:pointer}
+.bigbtn:active{transform:translateY(.8vmin);box-shadow:0 .4vmin 0 #1f8a31}
+/* top bar */
+#top{width:100%;display:flex;align-items:center;justify-content:center;gap:.8vmin;padding:1vmin 0;position:relative}
+.slot{font-size:clamp(22px,4.6vmin,46px);filter:grayscale(1);opacity:.35;transition:.3s}
+.slot.got{filter:none;opacity:1;transform:scale(1.15)}
+.slot.miss{filter:none;opacity:.9;color:#e08a00;transform:scale(1)}
+#gear{position:absolute;right:1vmin;top:1vmin;width:7vmin;height:7vmin;min-width:40px;min-height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.06);font-size:3.5vmin;opacity:.45}
+#title{font-size:clamp(26px,5.5vmin,56px);font-weight:700;margin:0}
+#hint{font-size:clamp(20px,3.8vmin,38px);margin:.5vmin 0 0;color:#b45f00;font-weight:700;min-height:1em}
+#stage{flex:1;width:100%;min-height:0;display:flex;align-items:center;justify-content:center}
+#stage svg{height:100%;width:auto;max-width:96%;border-radius:4vmin;box-shadow:0 1vmin 3vmin rgba(0,0,0,.15);background:#fff}
+#bottom{width:100%;display:flex;align-items:center;justify-content:center;gap:3vmin;padding:1.5vmin 2vmin 2.5vmin}
+#count{width:clamp(70px,16vmin,160px);height:clamp(70px,16vmin,160px);border-radius:50%;background:#ffd966;border:.8vmin solid #e0a100;display:flex;align-items:center;justify-content:center;font-size:clamp(40px,10vmin,100px);font-weight:800}
+#bar{flex:1;max-width:46vw;height:clamp(22px,5vmin,48px);background:#e5e0d2;border-radius:99px;overflow:hidden;border:.5vmin solid #cfc7b2}
+#fill{height:100%;width:0;background:linear-gradient(90deg,#ffb300,#ff8f00);border-radius:99px}
+#go{font:inherit;font-weight:800;font-size:clamp(30px,7vmin,72px);padding:2vmin 5vmin;border:none;border-radius:6vmin;min-width:30vw;background:#b9b9b9;color:#fff;box-shadow:0 1.2vmin 0 #8d8d8d}
+#go.ready{background:#2fb344;box-shadow:0 1.2vmin 0 #1f8a31;animation:pulse .8s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+#go.hidden{visibility:hidden}
+#go.pop{animation:popin .45s ease-out,pulse .8s .45s infinite}
+@keyframes popin{0%{transform:scale(.2);opacity:0}70%{transform:scale(1.25)}100%{transform:scale(1);opacity:1}}
+.row{display:flex;gap:3vmin;flex-wrap:wrap;justify-content:center}
+.bigbtn.adv{background:#f57c00;box-shadow:0 1.2vmin 0 #b85900}
+.bigbtn.adv:active{box-shadow:0 .4vmin 0 #b85900}
+.cap{font-size:clamp(18px,3vmin,30px);margin-top:1vmin;color:#555}
+.bcol{display:flex;flex-direction:column;align-items:center}
+/* wait card */
+#wait{position:absolute;inset:0;background:rgba(255,244,220,.94);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:5}
+#wait.on{display:flex}
+#wait .stop{width:clamp(160px,34vmin,340px);height:clamp(160px,34vmin,340px)}
+#wait .t{font-size:clamp(60px,15vmin,160px);font-weight:800;margin:2vmin 0}
+#wait .n{display:flex;gap:3vmin}
+#wait .n span{width:clamp(60px,12vmin,120px);height:clamp(60px,12vmin,120px);border-radius:50%;background:#ffd966;border:.7vmin solid #e0a100;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,7vmin,70px);font-weight:800}
+/* confetti */
+.cf{position:absolute;font-size:clamp(30px,6vmin,60px);pointer-events:none;z-index:4;animation:fly 1.8s ease-out forwards}
+@keyframes fly{0%{transform:translate(0,0) scale(.4);opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1.2) rotate(360deg);opacity:0}}
+#endstars{font-size:clamp(30px,7vmin,70px);max-width:92vw;text-align:center;margin:2vmin 0 4vmin;letter-spacing:.1em}
+/* teacher */
+#drawer{position:absolute;right:0;top:0;bottom:0;width:min(420px,92vw);background:#fff;box-shadow:-1vmin 0 4vmin rgba(0,0,0,.3);z-index:9;transform:translateX(105%);transition:.25s;padding:20px;overflow:auto;font-size:18px;text-align:left}
+#drawer.on{transform:none}
+#drawer h2{margin:0 0 10px;font-size:24px}
+#drawer label{display:flex;align-items:center;justify-content:space-between;margin:10px 0;gap:10px}
+#drawer input[type=number]{width:80px;font-size:20px;padding:6px}
+#drawer select{font-size:18px;padding:6px}
+#drawer .hist td{font-size:13px;padding:3px}
+#drawer .ok{color:#1f8a31;font-weight:700}
+#drawer .no{color:#c62828;font-weight:700}
+#drawer table{width:100%;border-collapse:collapse;margin-top:8px;font-size:16px}
+#drawer td,#drawer th{border:1px solid #ccc;padding:5px;text-align:center}
+#drawer button{font:inherit;font-size:18px;padding:10px 16px;margin:8px 8px 0 0;border-radius:10px;border:1px solid #888;background:#f3f3f3}
+#drawer button.p{background:#2fb344;color:#fff;border-color:#1f8a31}
+.note{font-size:15px;color:#666;margin-top:8px;line-height:1.5}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="s-start" class="screen on">
+  <h1>等一等小遊戲</h1>
+  <p class="sub">等到變綠色，才㩒掣</p>
+  <svg width="220" height="300" viewBox="0 0 220 300" aria-hidden="true"><rect x="60" y="10" width="100" height="250" rx="20" fill="#333"/><circle cx="110" cy="62" r="30" fill="#555"/><circle cx="110" cy="135" r="30" fill="#555"/><circle cx="110" cy="208" r="30" fill="#2fb344"/><rect x="100" y="258" width="20" height="40" fill="#555"/></svg>
+  <div style="height:3vmin"></div>
+  <div class="row"><div class="bcol"><button class="bigbtn" id="startB">基本挑戰</button><div class="cap">看到變綠色，才㩒</div></div><div class="bcol"><button class="bigbtn adv" id="startA">進階挑戰 👂</button><div class="cap">聽到「叮」，才㩒</div></div></div>
+</div>
+
+<div id="s-game" class="screen">
+  <div id="top"><span id="slots" style="display:flex;gap:.8vmin"></span>
+    <button id="gear" aria-label="老師設定">⚙</button></div>
+  <p id="title"></p>
+  <p id="hint"></p>
+  <div id="stage"></div>
+  <div id="bottom"><div id="count">3</div><div id="bar"><div id="fill"></div></div><button id="go">等一等…</button></div>
+  <div id="wait"><svg class="stop" viewBox="0 0 200 200"><polygon points="62,8 138,8 192,62 192,138 138,192 62,192 8,138 8,62" fill="#d62828" stroke="#fff" stroke-width="6"/><text x="100" y="135" font-size="110" font-weight="800" fill="#fff" text-anchor="middle" font-family="PingFang HK,Noto Sans CJK HK,sans-serif">停</text></svg><div class="t">等一等</div><div class="n"><span>1</span><span>2</span><span>3</span></div></div>
+</div>
+
+<div id="s-end" class="screen">
+  <h1 id="endTitle">10 關全部完成！</h1>
+  <p class="sub" id="endSub">我等到了，測試通過！</p>
+  <div id="endstars">⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐</div>
+  <button class="bigbtn" id="again">再玩一次</button>
+</div>
+
+<div id="drawer">
+  <h2>老師設定</h2>
+  <div id="cfgSecs"></div>
+  <label>進階：夠鐘後再等（最少秒）<input type="number" min="1" max="20" id="cfgExMin"></label>
+  <label>進階：夠鐘後再等（最多秒）<input type="number" min="1" max="20" id="cfgExMax"></label>
+  <label>㩒得太早之後<select id="cfgMode"><option value="restart">重新計時</option><option value="continue">暫停後繼續計時</option></select></label>
+  <label>語音讚賞<select id="cfgVoice"><option value="1">開</option><option value="0">關</option></select></label>
+  <button class="p" id="cfgSave">儲存並重新開始</button><button id="cfgClose">關閉</button>
+  <h2 style="margin-top:22px">本次紀錄</h2>
+  <table id="log"></table>
+  <h2 style="margin-top:22px">歷次挑戰</h2>
+  <table id="hist" class="hist"></table>
+  <button id="histCopy">複製紀錄</button><button id="histClear">清除紀錄</button><span id="histMsg" class="note"></span>
+  <p class="note">長按右上角齒輪約 1.2 秒可開啟本面板。<b>通過條件：10 關全部一次過做對，中途一次太早㩒都不算通過。</b>每一次太早㩒（包括「等一等」提示卡出現期間再㩒）都會記錄；出錯的關卡仍需做到成功才可進入下一關，10 關完成後才計算結果，未全對須重新由第 1 關開始。「進階挑戰」中，夠鐘後不會顯示任何提示，要再隨機等候設定的秒數，掣才會彈出，並發出「叮」聲和語音。建議由基本挑戰開始，成功率穩定後才用進階挑戰。</p>
+</div>
+
+</div>
+<script>
+(function(){
+var DEF={secs:[3,4,5,6,8,10,12,15,18,20],exMin:2,exMax:5,mode:'restart',voice:1};
+var cfg=JSON.parse(JSON.stringify(DEF));
+try{var sv=JSON.parse(localStorage.getItem('waitgame2')||'null');if(sv&&sv.secs&&sv.secs.length===10){cfg=sv}}catch(e){}
+var ORDER=['pot','flower','queue','light','pot','flower','queue','light','pot','flower'];
+var NAMES={pot:'煮飯',flower:'種花',queue:'排隊',light:'等綠燈'};
+var N=10;
+var $=function(i){return document.getElementById(i)};
+var round=0,startT=0,paused=false,done=false,ready=false,stars=0,results=[],audio=null,T=0,advanced=false,extra=0,pausedEl=0,lastP=0,readyAt=0,lastPass=false,HIST=[];
+try{HIST=JSON.parse(localStorage.getItem('waitgame2hist')||'[]')||[]}catch(e){HIST=[]}
+(function(){var h='';for(var i=0;i<N;i++)h+='<span class="slot" id="st'+i+'">⭐</span>';$('slots').innerHTML=h})();
+
+/* ---------- helpers ---------- */
+function kid(x,y,c,s,who){
+  s=s||1;
+  return '<g transform="translate('+x+','+y+') scale('+s+')"><rect x="-17" y="-48" width="13" height="48" rx="5" fill="#3b4a6b"/><rect x="4" y="-48" width="13" height="48" rx="5" fill="#3b4a6b"/><rect x="-26" y="-110" width="52" height="68" rx="14" fill="'+c+'"/><circle cx="0" cy="-132" r="24" fill="#f6d2b0"/><path d="M-25,-134 a25,25 0 0 1 50,0 q-13,-13 -25,-11 q-12,-2 -25,11z" fill="#3a2a22"/><circle cx="-8" cy="-130" r="3" fill="#222"/><circle cx="8" cy="-130" r="3" fill="#222"/><path d="M-7,-120 q7,6 14,0" stroke="#7a2323" stroke-width="3" fill="none"/>'+(who?'<polygon points="0,-170 -10,-186 10,-186" fill="#ff6f00"/>':'')+'</g>';
+}
+var W='<svg viewBox="0 0 800 420" xmlns="http://www.w3.org/2000/svg">';
+function floor(y,c){return '<rect x="0" y="'+y+'" width="800" height="'+(420-y)+'" fill="'+(c||'#e8d9b5')+'"/>'}
+
+/* ---------- scenes ---------- */
+function drawPot(p,d){
+  var o='<rect width="800" height="420" fill="#fff4dc"/>'+floor(340);
+  o+='<rect x="200" y="300" width="400" height="60" rx="10" fill="#555"/><circle cx="300" cy="330" r="14" fill="#999"/><circle cx="500" cy="330" r="14" fill="#999"/>';
+  var fl=0.6+0.4*Math.sin(T*9);
+  for(var i=0;i<5;i++){o+='<path d="M'+(290+i*55)+',300 q-14,-'+(28*fl)+' 0,-'+(44*fl)+' q14,'+(14)+' 0,'+(44*fl)+'z" fill="#ff8a00" opacity=".9"/>'}
+  o+='<rect x="250" y="170" width="300" height="130" rx="18" fill="#8a8f98"/><rect x="226" y="205" width="30" height="16" rx="6" fill="#6d727a"/><rect x="544" y="205" width="30" height="16" rx="6" fill="#6d727a"/>';
+  var lid=d?'<g transform="translate(40,-48) rotate(-18 400 170)">':'<g>';
+  o+=lid+'<path d="M240,172 q160,-70 320,0z" fill="#a4a9b2"/><circle cx="400" cy="120" r="12" fill="#6d727a"/></g>';
+  for(var j=0;j<3;j++){var a=Math.min(1,p*1.5)*(0.5+0.5*Math.sin(T*3+j));
+    o+='<path d="M'+(340+j*60)+',150 q-20,-30 0,-55 q20,-25 0,-55" stroke="#bbb" stroke-width="12" fill="none" stroke-linecap="round" opacity="'+a.toFixed(2)+'"/>'}
+  if(d){o+='<path d="M600,330 q80,70 160,0z" fill="#fff" stroke="#999" stroke-width="5"/><path d="M610,330 q70,-70 140,0z" fill="#fff" stroke="#ddd" stroke-width="4"/><text x="680" y="395" text-anchor="middle" font-size="34" fill="#555" font-family="sans-serif">飯好了</text>'}
+  return W+o+'</svg>';
+}
+function drawFlower(p,d){
+  var o='<rect width="800" height="420" fill="#e9f6ff"/>'+floor(350,'#9ccf7a');
+  o+='<circle cx="90" cy="80" r="46" fill="#ffd54f"/>';
+  o+='<path d="M330,350 l20,-70 h100 l20,70z" fill="#c0703a"/><rect x="320" y="270" width="160" height="22" rx="8" fill="#a85d2c"/>';
+  var h=190*p, top=272-h;
+  o+='<line x1="400" y1="272" x2="400" y2="'+top+'" stroke="#3a9a3a" stroke-width="12" stroke-linecap="round"/>';
+  if(p>.3)o+='<ellipse cx="365" cy="'+(272-h*.4)+'" rx="38" ry="16" fill="#4cb84c" transform="rotate(-25 365 '+(272-h*.4)+')"/>';
+  if(p>.55)o+='<ellipse cx="435" cy="'+(272-h*.65)+'" rx="38" ry="16" fill="#4cb84c" transform="rotate(25 435 '+(272-h*.65)+')"/>';
+  if(!d){o+='<circle cx="400" cy="'+(top-4)+'" r="'+(12+14*p)+'" fill="#e57399"/>'}
+  else{for(var i=0;i<8;i++){var a=i*Math.PI/4;o+='<ellipse cx="'+(400+Math.cos(a)*34)+'" cy="'+(top-4+Math.sin(a)*34)+'" rx="22" ry="22" fill="#ff7fa8"/>'}o+='<circle cx="400" cy="'+(top-4)+'" r="20" fill="#ffd54f"/>'}
+  return W+o+'</svg>';
+}
+function drawQueue(p,d){
+  var o='<rect width="800" height="420" fill="#fff4dc"/>'+floor(360);
+  o+='<rect x="640" y="190" width="150" height="170" rx="10" fill="#c9a86a" stroke="#8a6d2f" stroke-width="5"/><rect x="650" y="160" width="130" height="36" rx="8" fill="#e8c27a"/><text x="715" y="300" text-anchor="middle" font-size="60" fill="#5a4310" font-family="sans-serif">飯</text>';
+  var L=d?3:Math.min(2,Math.floor(p*3));
+  var cols=['#e07b39','#6abf69','#b07ad9'];
+  for(var j=0;j<3;j++){ if(j>=L){ o+=kid(560-(j-L)*105,360,cols[j],1.2) } }
+  var ox=560-(3-L)*105;
+  o+=kid(ox,360,'#4a90d9',1.2,true);
+  return W+o+'</svg>';
+}
+function drawLight(p,d){
+  var o='<rect width="800" height="420" fill="#dff1ff"/><rect x="0" y="300" width="800" height="120" fill="#555"/>';
+  for(var i=0;i<8;i++)o+='<rect x="'+(40+i*95)+'" y="360" width="55" height="14" fill="#fff"/>';
+  o+='<rect x="0" y="280" width="800" height="22" fill="#bbb"/>';
+  o+='<rect x="560" y="40" width="90" height="230" rx="18" fill="#333"/><rect x="598" y="268" width="14" height="14" fill="#555"/>';
+  o+='<circle cx="605" cy="85" r="30" fill="'+(d?'#552':'#e53935')+'"/><circle cx="605" cy="155" r="30" fill="#552"/><circle cx="605" cy="225" r="30" fill="'+(d?'#2fb344':'#253')+'"/>';
+  if(!d){var cx=900-((T*140)%1100);o+='<g transform="translate('+cx+',300)"><rect x="0" y="20" width="150" height="46" rx="12" fill="#ef5350"/><rect x="30" y="-6" width="80" height="34" rx="10" fill="#ef5350"/><rect x="42" y="2" width="56" height="22" fill="#cfe9ff"/><circle cx="32" cy="68" r="16" fill="#222"/><circle cx="118" cy="68" r="16" fill="#222"/></g>'}
+  o+=kid(300,296,'#4a90d9',1.25,true);
+  return W+o+'</svg>';
+}
+var DRAW={pot:drawPot,flower:drawFlower,queue:drawQueue,light:drawLight};
+
+/* ---------- audio / speech ---------- */
+function tone(f,t0,dur,vol){
+  if(!audio)return;
+  try{var o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,audio.currentTime+t0);g.gain.linearRampToValueAtTime(vol,audio.currentTime+t0+.02);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+t0+dur);o.connect(g);g.connect(audio.destination);o.start(audio.currentTime+t0);o.stop(audio.currentTime+t0+dur+.05)}catch(e){}
+}
+function say(t){
+  if(!cfg.voice)return;
+  try{var u=new SpeechSynthesisUtterance(t);u.lang='zh-HK';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+}
+function confetti(){
+  var app=$('app');
+  for(var i=0;i<22;i++){var d=document.createElement('div');d.className='cf';d.textContent=['⭐','🌟','✨','🎉'][i%4];
+    d.style.left='50%';d.style.top='48%';d.style.setProperty('--dx',((Math.random()-.5)*80)+'vw');d.style.setProperty('--dy',((Math.random()-.7)*70)+'vh');
+    app.appendChild(d);(function(x){setTimeout(function(){x.remove()},1900)})(d)}
+}
+
+/* ---------- game flow ---------- */
+function show(id){['s-start','s-game','s-end'].forEach(function(x){$(x).classList.toggle('on',x===id)})}
+function secs(){return cfg.secs[round]}
+function rint(a,b){a=Math.min(a,b);b=Math.max(a,b);return a+Math.floor(Math.random()*(b-a+1))}
+function beginRound(){
+  done=false;ready=false;paused=false;startT=performance.now();
+  extra=advanced?rint(cfg.exMin,cfg.exMax):0;
+  var sc=ORDER[round];
+  $('title').textContent=NAMES[sc]+'　第 '+(round+1)+' / '+N+' 關';
+  $('hint').textContent=advanced?'👂 聽到「叮」，先㩒掣':'';
+  var g=$('go');g.className=advanced?'hidden':'';g.textContent='等一等…';
+  results[round]=results[round]||{scene:NAMES[sc],sec:secs(),early:0,during:0,rt:null,extras:[]};
+  results[round].extras.push(extra);
+  if(advanced)say('等到聽見叮，先㩒掣');
+  renderLog();
+}
+function renderStars(){for(var i=0;i<N;i++){var e=$('st'+i),fin=i<stars,clean=fin&&results[i]&&results[i].early===0;e.classList.toggle('got',!!clean);e.classList.toggle('miss',fin&&!clean);e.textContent=(fin&&!clean)?'◯':'⭐'}}
+function newGame(adv){advanced=adv;round=0;stars=0;results=[];renderStars();show('s-game');beginRound()}
+function elapsed(now){return paused?pausedEl:(now-startT)}
+function frame(now){
+  T=now/1000;
+  if($('s-game').classList.contains('on')){
+    var el=elapsed(now),base=secs()*1000,p=Math.min(1,el/base);
+    if(!done&&!ready){
+      var need=advanced?base+extra*1000:base;
+      if(!paused&&el>=need){
+        ready=true;readyAt=performance.now();
+        if(advanced){var g=$('go');g.className='pop ready';g.textContent='㩒！';tone(1046,0,.5,.28);tone(1318,.08,.5,.2);say('㩒')}
+        else{$('go').className='ready';$('go').textContent='好了！㩒我';tone(660,0,.15,.12)}
+      }
+    }
+    var sc=ORDER[round];
+    if(advanced){
+      var pastBase=el>=base;
+      $('stage').innerHTML=DRAW[sc](done?1:Math.min(p,0.97),done);
+      $('fill').style.width=(done?100:(pastBase?0:p*100))+'%';
+      $('count').textContent=done?'✓':(pastBase?'':(Math.ceil((1-p)*secs()-0.0001)||1));
+      $('count').style.background=done?'#8fe3a0':(pastBase?'#eee':'#ffd966');
+    }else{
+      $('stage').innerHTML=DRAW[sc](done?1:p,done||ready);
+      $('fill').style.width=(done?100:p*100)+'%';
+      $('count').textContent=(done||ready)?'✓':(Math.ceil((1-p)*secs()-0.0001)||1);
+      $('count').style.background=(ready||done)?'#8fe3a0':'#ffd966';
+    }
+  }
+  requestAnimationFrame(frame);
+}
+function onEarly(){
+  if(done||paused||ready)return;
+  results[round].early++;renderLog();
+  paused=true;pausedEl=performance.now()-startT;
+  var t0=performance.now();
+  $('wait').classList.add('on');tone(220,0,.3,.12);say('等一等');
+  setTimeout(function(){
+    $('wait').classList.remove('on');
+    if(cfg.mode==='restart'){startT=performance.now();if(advanced)extra=rint(cfg.exMin,cfg.exMax);results[round].extras.push(extra)}
+    else{startT+=performance.now()-t0}
+    paused=false;
+  },2000);
+}
+function onGo(){
+  if(done||paused)return;
+  if(!ready){ if(!advanced)onEarly(); return; }
+  done=true;results[round].rt=Math.round(performance.now()-readyAt);stars++;renderStars();renderLog();
+  tone(784,0,.18,.18);tone(988,.12,.18,.18);tone(1318,.24,.35,.18);
+  confetti();say('好叻！你等到了');
+  $('go').className='';$('go').textContent='好叻！';
+  setTimeout(function(){
+    if(round<N-1){round++;beginRound()}else{finish()}
+  },2600);
+}
+function totalErr(){var t=0;results.forEach(function(r){if(r)t+=r.early});return t}
+function finish(){
+  var err=totalErr(),pass=(err===0);lastPass=pass;
+  var d=new Date(),pad=function(n){return(n<10?'0':'')+n};
+  HIST.unshift({t:(d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes()),mode:advanced?'進階':'基本',pass:pass,err:err,per:results.map(function(r){return r?r.early:0})});
+  HIST=HIST.slice(0,30);
+  try{localStorage.setItem('waitgame2hist',JSON.stringify(HIST))}catch(e){}
+  var es='';for(var i=0;i<N;i++){es+=(results[i]&&results[i].early===0)?'⭐':'◯'}
+  $('endstars').textContent=es;
+  if(pass){$('endTitle').textContent='10 關全部做到了！';$('endSub').textContent='一次過全部做對，測試通過！';$('again').textContent='再玩一次';tone(523,0,.2,.15);tone(659,.2,.2,.15);tone(784,.4,.4,.15);say('全部做對，好叻')}
+  else{$('endTitle').textContent='做完 10 關了';$('endSub').textContent='今次未全對，我們再試一次。⭐ 是一次做對的關卡';$('again').textContent='再試一次';tone(440,0,.25,.12);tone(523,.25,.3,.12);say('再試一次')}
+  show('s-end');renderHist();renderLog();
+}
+function renderLog(){
+  var h='<tr><th>關</th><th>情境</th><th>等候秒數'+(advanced?'（夠鐘後再等）':'')+'</th><th>太早㩒</th><th>反應(秒)</th></tr>';
+  results.forEach(function(r,i){if(r){var ex=advanced?'＋'+r.extras[r.extras.length-1]:'';var er=r.early+(r.during?'（含提示卡期間 '+r.during+'）':'');h+='<tr><td>'+(i+1)+'</td><td>'+r.scene+'</td><td>'+r.sec+ex+'</td><td>'+er+'</td><td>'+(r.rt==null?'':(r.rt/1000).toFixed(1))+'</td></tr>'}});
+  $('log').innerHTML=h;
+}
+function renderHist(){
+  var h='<tr><th>時間</th><th>模式</th><th>結果</th><th>錯誤</th><th>每關太早㩒</th></tr>';
+  HIST.forEach(function(x){h+='<tr><td>'+x.t+'</td><td>'+x.mode+'</td><td class="'+(x.pass?'ok':'no')+'">'+(x.pass?'通過':'未通過')+'</td><td>'+x.err+'</td><td>'+x.per.join(' ')+'</td></tr>'});
+  $('hist').innerHTML=h;
+}
+
+/* ---------- teacher drawer ---------- */
+function buildCfg(){
+  var h='';for(var i=0;i<N;i++){h+='<label>第 '+(i+1)+' 關（'+NAMES[ORDER[i]]+'）等候秒數<input type="number" min="1" max="120" id="cs'+i+'" value="'+cfg.secs[i]+'"></label>'}
+  $('cfgSecs').innerHTML=h;$('cfgMode').value=cfg.mode;$('cfgVoice').value=String(cfg.voice);$('cfgExMin').value=cfg.exMin;$('cfgExMax').value=cfg.exMax;
+}
+var holdT=null;
+$('gear').addEventListener('pointerdown',function(e){e.stopPropagation();holdT=setTimeout(function(){buildCfg();renderLog();renderHist();$('drawer').classList.add('on')},1200)});
+['pointerup','pointerleave','pointercancel'].forEach(function(ev){$('gear').addEventListener(ev,function(){clearTimeout(holdT)})});
+$('cfgClose').onclick=function(){$('drawer').classList.remove('on')};
+$('cfgSave').onclick=function(){
+  var a=[];for(var i=0;i<N;i++){var v=parseInt($('cs'+i).value,10);a.push(isNaN(v)?DEF.secs[i]:Math.max(1,Math.min(120,v)))}
+  var mn=parseInt($('cfgExMin').value,10),mx=parseInt($('cfgExMax').value,10);
+  if(isNaN(mn))mn=DEF.exMin;if(isNaN(mx))mx=DEF.exMax;
+  cfg={secs:a,exMin:Math.max(1,Math.min(mn,mx)),exMax:Math.max(1,Math.max(mn,mx)),mode:$('cfgMode').value,voice:parseInt($('cfgVoice').value,10)};
+  try{localStorage.setItem('waitgame2',JSON.stringify(cfg))}catch(e){}
+  $('drawer').classList.remove('on');results=[];renderStars();show('s-start');
+};
+function audioInit(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume()}catch(e){}}
+$('startB').onclick=function(){audioInit();newGame(false)};
+$('startA').onclick=function(){audioInit();newGame(true)};
+$('again').onclick=function(){if(lastPass){show('s-start')}else{newGame(advanced)}};
+$('wait').addEventListener('pointerdown',function(e){e.stopPropagation();if(!paused||done||!results[round])return;results[round].early++;results[round].during++;renderLog()});
+$('histClear').onclick=function(){HIST=[];try{localStorage.setItem('waitgame2hist','[]')}catch(e){}renderHist()};
+$('histCopy').onclick=function(){
+  var t=HIST.map(function(x){return x.t+'\t'+x.mode+'\t'+(x.pass?'通過':'未通過')+'\t錯誤'+x.err+'\t'+x.per.join(',')}).join('\n');
+  var m=$('histMsg');
+  try{navigator.clipboard.writeText(t).then(function(){m.textContent=' 已複製'},function(){m.textContent=' 複製失敗，請直接抄錄表格'})}catch(e){m.textContent=' 複製失敗，請直接抄錄表格'}
+};
+$('go').addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();onGo()});
+$('s-game').addEventListener('pointerdown',function(e){
+  if(!advanced)return;
+  if(e.target.closest&&e.target.closest('#gear,#drawer,#go'))return;
+  onEarly();
+});
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
