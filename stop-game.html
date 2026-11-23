@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>停一停小遊戲</title>
+<title>停一停、諗一諗</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@500;700;900&display=swap">
 <style>
@@ -53,6 +53,7 @@ button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
 .level small{font-size:12px;letter-spacing:.1em;color:var(--muted);font-weight:500;line-height:1.2}
 .level strong{font-size:clamp(18px,5vw,24px);font-weight:700;line-height:1.2}
 .icon-btn{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;padding:0}
+.icon-btn[hidden]{display:none}
 .icon-btn svg{width:24px;height:24px}
 .icon-btn[aria-pressed="false"]{color:var(--muted)}
 .top .btns{display:flex;gap:8px}
@@ -151,9 +152,9 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
 
 <div class="app" id="app">
   <header class="top">
-    <div class="level"><small id="lvNum">第 1 關</small><strong id="lvTitle">同學嘅餅乾</strong></div>
+    <div class="level"><small id="lvNum">停一停、諗一諗 · 第 1 關</small><strong id="lvTitle">同學嘅餅乾</strong></div>
     <div class="btns">
-      <button class="icon-btn" id="menuBtn" data-action="menu" aria-label="選關"></button>
+      <button class="icon-btn" id="menuBtn" data-action="menu" aria-label="選關重玩" hidden></button>
       <button class="icon-btn" id="soundBtn" data-action="sound" aria-pressed="true" aria-label="聲音開關"></button>
     </div>
   </header>
@@ -244,6 +245,9 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
 
   /* ---------- views ---------- */
   function L(){return LEVELS[state.level]}
+  function allLevelsCompleted(){
+    return LEVELS.every(function(level,i){return state.stars[i]===true});
+  }
   var VIEWS={
     menu:function(){
       var tiles=LEVELS.map(function(lv,i){
@@ -274,16 +278,24 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
         '<button class="icon-btn" data-action="listen" aria-label="再聽一次">'+I.spk+'</button></div>'+
         '<div class="opts" role="group" aria-label="三個做法">'+cards+'</div></div>';
     },
-    done:function(){
-      var o=L().opts[state.solved],last=state.level>=LEVELS.length-1,first=!state.stars[state.level];
+    done:function(newStar){
+      var option=L().opts[state.solved];
+      var last=state.level===LEVELS.length-1;
+      var unlocked=allLevelsCompleted();
+      var finishedRun=newStar&&unlocked;
+      var actions=last?'':'<button class="btn btn--wide" data-action="nextlevel"><span>下一關</span><small>NEXT LEVEL</small>'+I.arrow+'</button>';
+      if(finishedRun){
+        actions='<button class="btn btn--wide" data-action="menu">選關重玩'+I.grid+'</button>';
+      }else if(unlocked){
+        actions+=holdBtn('再玩一次','',I.again,'again','btn--half btn--ghost')+
+          '<button class="btn btn--half btn--ghost" data-action="menu">選關重玩'+I.grid+'</button>';
+      }
       return '<div class="stack sit"><img class="pic" src="'+IMG.HAPPY+'" alt="男孩開心地豎起拇指，老師在旁微笑">'+
-        '<div class="side"><div class="done-row">'+starSvg(first)+'<div><p class="t1">做得好！ <span class="w">Well done!</span></p><p class="t2">我揀咗：'+o.zh+'</p></div>'+
+        '<div class="side"><div class="done-row">'+starSvg(newStar)+'<div>'+
+        (finishedRun?'<p class="t1">完成所有關卡！</p>':'<p class="t1">做得好！ <span class="w">Well done!</span></p>')+
+        '<p class="t2">我揀咗：'+option.zh+'</p></div>'+
         '<button class="icon-btn" data-action="listen" aria-label="再聽一次">'+I.spk+'</button></div>'+
-        '<div class="actions">'+
-        (last?'':'<button class="btn btn--wide" data-action="nextlevel"><span>下一關</span><small>NEXT LEVEL</small>'+I.arrow+'</button>')+
-        holdBtn('再玩一次','',I.again,'again','btn--half'+(last?'':' btn--ghost'))+
-        '<button class="btn btn--half btn--ghost" data-action="menu"><span>選關</span>'+I.grid+'</button>'+
-        '</div></div></div>';
+        '<div class="actions">'+actions+'</div></div></div>';
     }
   };
 
@@ -295,17 +307,19 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
     soundBtn.innerHTML=state.sound?SOUND_ON:SOUND_OFF;
     soundBtn.setAttribute('aria-pressed',state.sound?'true':'false');
     menuBtn.innerHTML=I.grid;
-    if(state.menu){lvNum.textContent='停一停';lvTitle.textContent='全部關卡';prog.hidden=true}
+    menuBtn.hidden=!allLevelsCompleted()||state.menu;
+    if(state.menu){lvNum.textContent='停一停、諗一諗';lvTitle.textContent='全部關卡';prog.hidden=true}
     else{
-      lvNum.textContent='第 '+(state.level+1)+' 關';lvTitle.textContent=L().title;
+      lvNum.textContent='停一停、諗一諗 · 第 '+(state.level+1)+' / '+LEVELS.length+' 關';
+      lvTitle.textContent=L().title;
       prog.hidden=false;
       var h='';for(var k=0;k<3;k++)h+='<i class="'+(k<state.screen?'done':k===state.screen?'cur':'')+'"></i>';
       prog.innerHTML=h;prog.setAttribute('aria-label','第 '+(state.screen+1)+' 步，共 3 步');
     }
   }
-  function render(){
+  function render(newStar){
     var name=state.menu?'menu':['situation','choose','done'][state.screen];
-    stage.innerHTML=VIEWS[name]();
+    stage.innerHTML=VIEWS[name](newStar);
     renderChrome();
   }
   function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
@@ -318,19 +332,20 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
     window.scrollTo(0,0);
   }
   function step(screen){
-    var first=!state.stars[state.level];
+    var newStar=screen===2&&!state.stars[state.level];
     state.screen=screen;
     if(screen===2){
+      state.stars[state.level]=true;
       var chosen=L().opts[state.solved].zh;
-      state.say=first?'做得好！你揀咗：'+chosen+'。':'你揀咗：'+chosen+'。';
+      state.say=(newStar?'做得好！':'')+'你揀咗：'+chosen+'。';
+      if(newStar&&allLevelsCompleted())state.say+='完成所有關卡！可以選關重玩。';
     }else state.say=screen===1?'我可以點做？':L().sit.zh;
-    render();
-    if(screen===2)state.stars[state.level]=true;
+    render(newStar);
     speak(state.say);
     window.scrollTo(0,0);
   }
   function pickOpt(oi){
-    if(state.solved!==null)return;
+    if(state.menu||state.screen!==1||state.solved!==null)return;
     var o=L().opts[oi];
     if(o.ok){state.solved=oi;step(2)}
     else{
@@ -344,7 +359,10 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
   function holdEnd(ok){
     if(!hold)return;var h=hold;hold=null;cancelAnimationFrame(h.raf);
     h.el.querySelector('.fill').style.width='0';
-    if(ok){var a=h.el.getAttribute('data-hold');if(a==='next')step(1);else if(a==='again')start(state.level)}
+    if(!ok||state.menu)return;
+    var action=h.el.getAttribute('data-hold');
+    if(action==='next'&&state.screen===0)step(1);
+    else if(action==='again'&&state.screen===2&&allLevelsCompleted())start(state.level);
   }
   function holdStart(el){
     if(hold)return;
@@ -371,11 +389,15 @@ main#stage{flex:1;min-height:0;display:flex;flex-direction:column}
   document.getElementById('app').addEventListener('click',function(e){
     var t=e.target.closest('[data-action]');if(!t||t.disabled)return;
     var a=t.getAttribute('data-action');
-    if(a==='next')step(1);
-    else if(a==='again')start(state.level);
-    else if(a==='nextlevel')start(state.level+1);
-    else if(a==='menu'){state.menu=true;render();window.scrollTo(0,0)}
-    else if(a==='level')start(parseInt(t.getAttribute('data-i'),10));
+    if(a==='nextlevel'&&!state.menu&&state.screen===2&&state.level<LEVELS.length-1){
+      start(state.level+1);
+    }else if(a==='menu'&&allLevelsCompleted()){
+      holdEnd(false);
+      state.menu=true;render();window.scrollTo(0,0);
+    }else if(a==='level'&&state.menu&&allLevelsCompleted()){
+      var level=Number(t.getAttribute('data-i'));
+      if(Number.isInteger(level)&&level>=0&&level<LEVELS.length)start(level);
+    }
     else if(a==='listen')speak(state.say);
     else if(a==='sound'){state.sound=!state.sound;if(!state.sound){try{window.speechSynthesis.cancel()}catch(err){}}renderChrome()}
     else if(a==='pick')pickOpt(parseInt(t.getAttribute('data-id'),10));
